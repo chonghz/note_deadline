@@ -293,7 +293,7 @@
     border-radius: 18px;
     padding: 18px 22px 18px 20px;
     display: grid;
-    grid-template-columns: 6px auto 1fr auto auto auto;
+    grid-template-columns: 6px auto 1fr auto auto auto auto;
     align-items: center;
     gap: 16px;
     transition: all 0.2s;
@@ -433,13 +433,12 @@
     white-space: nowrap;
   }
 
-  /* DELETE */
-  .card-delete {
+  /* DELETE & EDIT */
+  .card-delete, .card-edit {
     background: none;
     border: none;
-    color: #d1d5db;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 15px;
     width: 30px; height: 30px;
     border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
@@ -447,7 +446,11 @@
     flex-shrink: 0;
   }
 
+  .card-delete { color: #d1d5db; }
   .card-delete:hover { color: var(--red); background: var(--red-bg); }
+
+  .card-edit { color: #d1d5db; }
+  .card-edit:hover { color: var(--violet); background: var(--violet-bg); }
 
   /* EMPTY */
   .empty-state {
@@ -543,7 +546,7 @@
     .container { padding: 20px 16px 60px; }
     .stats-bar { grid-template-columns: repeat(2, 1fr); gap: 10px; }
     .add-form { grid-template-columns: 1fr; }
-    .deadline-card { grid-template-columns: 5px auto 1fr auto auto; gap: 10px; }
+    .deadline-card { grid-template-columns: 5px auto 1fr auto auto auto; gap: 10px; }
     .card-date { display: none; }
   }
 </style>
@@ -636,7 +639,67 @@
   </div>
 </div>
 
+<!-- EDIT MODAL -->
+<div class="modal-overlay hidden" id="edit-modal" onclick="if(event.target===this)closeEditModal()">
+  <div class="modal">
+    <div class="modal-title">✏️ Chỉnh Sửa Deadline</div>
+    <div class="form-grid">
+      <div>
+        <div class="form-label">Tên deadline *</div>
+        <input type="text" id="e-title" placeholder="Ví dụ: Nộp báo cáo tháng 3...">
+      </div>
+      <div>
+        <div class="form-label">Ngày & giờ *</div>
+        <input type="datetime-local" id="e-date">
+      </div>
+      <div>
+        <div class="form-label">Ghi chú</div>
+        <textarea id="e-note" placeholder="Mô tả thêm..." rows="3" style="resize:vertical"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeEditModal()">Huỷ</button>
+      <button class="btn-primary" onclick="saveEdit()">Lưu thay đổi 💾</button>
+    </div>
+  </div>
+</div>
+
 <script>
+  let editingId = null;
+
+  function openEditModal(id) {
+    const d = deadlines.find(x => x.id === id);
+    if (!d) return;
+    editingId = id;
+    document.getElementById('e-title').value = d.title;
+    document.getElementById('e-note').value = d.note || '';
+    const dt = new Date(d.date);
+    const iso = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    document.getElementById('e-date').value = iso;
+    document.getElementById('edit-modal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('e-title').focus(), 50);
+  }
+
+  function closeEditModal() {
+    document.getElementById('edit-modal').classList.add('hidden');
+    editingId = null;
+  }
+
+  function saveEdit() {
+    const title = document.getElementById('e-title').value.trim();
+    const date = document.getElementById('e-date').value;
+    const note = document.getElementById('e-note').value.trim();
+    if (!title || !date) { alert('Vui lòng nhập tên và ngày!'); return; }
+    const d = deadlines.find(x => x.id === editingId);
+    if (d) {
+      d.title = title;
+      d.date = new Date(date).getTime();
+      d.note = note;
+      save(); render();
+    }
+    closeEditModal();
+  }
+
   const COLORS = ['cc-violet', 'cc-pink', 'cc-blue', 'cc-teal', 'cc-orange', 'cc-green'];
 
   let deadlines = JSON.parse(localStorage.getItem('deadlines_v4') || '[]');
@@ -741,6 +804,7 @@
           <div class="countdown-value ${cd.cls}">${cd.value}</div>
           ${cd.label ? `<div class="countdown-label">${cd.label}</div>` : ''}
         </div>
+        <button class="card-edit" onclick="openEditModal(${d.id})" title="Chỉnh sửa">✏️</button>
         <button class="card-delete" onclick="deleteItem(${d.id})" title="Xoá">✕</button>
       </div>`;
     }).join('');
